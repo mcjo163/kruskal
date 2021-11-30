@@ -97,6 +97,10 @@ class Graph:
         """Removes a vertex from the graph."""
         if v not in self.vertices:
             raise ValueError("Cannot remove nonexistent vertex.")
+        
+        for edge in [e for e in self.edges if v in e.vertices]:
+            self.remove_edge(edge)
+
         self.vertices.remove(v)
 
     def add_edge(self, a: Vertex, b: Vertex, weight: int) -> None:

@@ -2,6 +2,7 @@
 
 # screen constants
 SCREEN_DIM = (800, 600)  # screen dimensions
+FPS = 60  # framerate for the application
 
 # colors
 BLACK = (0, 0, 0)
