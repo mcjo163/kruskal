@@ -1,6 +1,17 @@
 # main script
-from engine import Engine
+from constants import *
+import pygame as pg
+from engine import Editor
 
 
 if __name__ == "__main__":
-    Engine().run()
+    # initialize pygame and pygame.font
+    pg.init()
+    pg.font.init()
+
+    # set up screen and font
+    screen = pg.display.set_mode(SCREEN_DIM)
+    font = pg.font.SysFont('verdana', FONT_SIZE, False)
+
+    # use the editor to create a connected graph
+    graph = Editor(screen, font).run()

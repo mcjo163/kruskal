@@ -7,16 +7,13 @@ from classes import Graph, Edge, Vertex, V
 from constants import *
 
 
-class Engine:
-    def __init__(self) -> None:
-        pg.init()
-        pg.font.init()
+class Editor:
+    def __init__(self, screen: pg.Surface, font: pg.font.Font) -> None:
+        self.screen = screen
+        self.font = font
 
-        self.screen = pg.display.set_mode(SCREEN_DIM)
-        self.font = pg.font.SysFont('verdana', FONT_SIZE, False)
-        self.clock = pg.time.Clock()
-        self.done = False
-
+        self._clock = pg.time.Clock()
+        self._done = False
         self._graph = Graph(set(), set())
         self._selected: Optional[Vertex | Edge] = None
         self._state = "editor.free"
@@ -42,7 +39,7 @@ class Engine:
         for event in pg.event.get():
             match event.type:
                 case pg.QUIT:
-                    self.done = True
+                    self._done = True
                 
                 case pg.MOUSEBUTTONDOWN:
                     if event.button == 1:
@@ -80,7 +77,7 @@ class Engine:
         for event in pg.event.get():
             match event.type:
                 case pg.QUIT:
-                    self.done = True
+                    self._done = True
                 
                 case pg.MOUSEMOTION:
                     self._state = "editor.dragging"
@@ -107,7 +104,7 @@ class Engine:
         for event in pg.event.get():
             match event.type:
                 case pg.QUIT:
-                    self.done = True
+                    self._done = True
                 
                 case pg.MOUSEBUTTONUP:
                     if event.button == 1:
@@ -132,7 +129,7 @@ class Engine:
         for event in pg.event.get():
             match event.type:
                 case pg.QUIT:
-                    self.done = True
+                    self._done = True
                 
                 case pg.MOUSEBUTTONDOWN:
                     if event.button == 1:
@@ -153,11 +150,11 @@ class Engine:
                     # scrolling changes weight of new edge
                     self._new_weight = max(0, self._new_weight + event.y)
     
-    def run(self) -> None:
-        """Start and run the application."""
+    def run(self) -> Graph:
+        """Start and run the editor. Returns the created graph."""
         pg.display.set_caption(f"Kruskal's Algorithm - Create a Connected Graph")
 
-        while not self.done:
+        while not self._done:
             mouse_pos = pg.mouse.get_pos()
             
             self._state_map[self._state](mouse_pos)
@@ -173,7 +170,9 @@ class Engine:
 
 
             pg.display.update()
-            self.clock.tick(FPS)
+            self._clock.tick(FPS)
+        
+        return self._graph
         
     def draw_temp_edge(self, mouse_pos: tuple[int, int]) -> None:
         """Draws the temporary edge from selected vertex to mouse position."""
