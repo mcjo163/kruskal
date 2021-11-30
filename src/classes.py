@@ -60,15 +60,53 @@ class Edge:
         # otherwise return distance to closest endpoint
         return min(pt_distance(point, (x1, y1)), pt_distance(point, (x2, y2)))
 
-    def draw(self, surf: pg.Surface, color: tuple[int, int, int], width: int) -> None:
+    def draw(
+        self,
+        surf: pg.Surface,
+        font: pg.font.Font,
+        color: tuple[int, int, int],
+        width: int,
+    ) -> None:
         """Draws the edge to the given `Surface`."""
         a, b = self.vertices
+
+        w_text = font.render(str(self.weight), True, color, BG_COLOR)
+        w_text_border_size = max(w_text.get_width(), w_text.get_height())
+        midpoint = ((a.pos[0] + b.pos[0]) // 2, (a.pos[1] + b.pos[1]) // 2)
 
         # attempt to normalize line thickness
         diff = (abs(a.pos[0] - b.pos[0]), abs(a.pos[1] - b.pos[1]))
         t = int(min(diff) / max(diff) + (width / 1.5))
 
-        pg.draw.line(surf, color, a.pos, b.pos, width=width+t)
+        # draw edge line
+        pg.draw.line(surf, color, a.pos, b.pos, width=width + t)
+
+        # draw edge weight at center point
+        surf.fill(
+            color,
+            (
+                midpoint[0] - (w_text_border_size + 2 * width) // 2,
+                midpoint[1] - (w_text_border_size + 2 * width) // 2,
+                w_text_border_size + 2 * width,
+                w_text_border_size + 2 * width,
+            ),
+        )
+        surf.fill(
+            BG_COLOR,
+            (
+                midpoint[0] - (w_text_border_size + 2) // 2,
+                midpoint[1] - (w_text_border_size + 2) // 2,
+                w_text_border_size + 2,
+                w_text_border_size + 2,
+            ),
+        )
+        surf.blit(
+            w_text,
+            (
+                midpoint[0] - w_text.get_width() // 2,
+                midpoint[1] - w_text.get_height() // 2,
+            ),
+        )
 
 
 class Graph:
@@ -97,7 +135,7 @@ class Graph:
         """Removes a vertex from the graph."""
         if v not in self.vertices:
             raise ValueError("Cannot remove nonexistent vertex.")
-        
+
         for edge in [e for e in self.edges if v in e.vertices]:
             self.remove_edge(edge)
 
@@ -107,6 +145,16 @@ class Graph:
         """Adds an edge between two vertices in the graph."""
         if a not in self.vertices or b not in self.vertices:
             raise ValueError("Cannot create edge with nonexistent vertex.")
+
+        # ensure graph simplicity
+        if a == b:
+            return
+        for e in self.edges:
+            if set((a, b)) == set(e.vertices):
+                # update edge weight to new desired value
+                self.modify_edge_weight(e, weight)
+                return
+
         self.edges.add(Edge(a, b, weight))
 
     def modify_edge_weight(self, e: Edge, weight: int) -> None:
@@ -139,9 +187,7 @@ class Graph:
 
         # generate a list of the in-range edges, sorted by distance
         if in_click_distance := sorted(
-            filter(
-                lambda e: e.distance_to(mouse_pos) <= EDGE_HOVER_WIDTH, self.edges
-            ),
+            filter(lambda e: e.distance_to(mouse_pos) <= EDGE_HOVER_WIDTH, self.edges),
             key=lambda e: e.distance_to(mouse_pos),
         ):
             return in_click_distance[0]
@@ -152,13 +198,14 @@ class Graph:
         self,
         surf: pg.Surface,
         selected: Optional[Vertex | Edge],
+        font: pg.font.Font,
     ) -> None:
         """Draws the graph to the given `Surface`."""
         for e in self.edges:
             if e == selected:
-                e.draw(surf, EDGE_HOVER_COLOR, EDGE_HOVER_WIDTH)
+                e.draw(surf, font, EDGE_HOVER_COLOR, EDGE_HOVER_WIDTH)
             else:
-                e.draw(surf, EDGE_DEFAULT_COLOR, EDGE_DEFAULT_WIDTH)
+                e.draw(surf, font, EDGE_DEFAULT_COLOR, EDGE_DEFAULT_WIDTH)
         for v in self.vertices:
             if v == selected:
                 v.draw(surf, VERTEX_HOVER_COLOR, VERTEX_HOVER_RADIUS)
