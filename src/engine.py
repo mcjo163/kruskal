@@ -7,13 +7,6 @@ from classes import Graph, Edge, Vertex, V
 from constants import *
 
 
-# application states
-#
-# editor.free:          default state
-# editor.clicking:      vertex has been clicked, but not moved
-# editor.dragging:      currently dragging a vertex
-# editor.holding_edge:  placing an edge
-
 class Engine:
     def __init__(self) -> None:
         pg.init()
@@ -39,6 +32,11 @@ class Engine:
         }
 
     def state_editor_free(self, mouse_pos: tuple[int, int]) -> None:
+        """
+        editor.free state input handler
+        
+        This is the default, resting state of the editor.
+        """
         self._selected = self._graph.get_selected(mouse_pos)
         self._from_vertex = None
         for event in pg.event.get():
@@ -70,6 +68,13 @@ class Engine:
                         self._graph.modify_edge_weight(self._selected, max(0, self._selected.weight + event.y))
     
     def state_editor_clicking(self, mouse_pos: tuple[int, int]) -> None:
+        """
+        editor.clicking state input handler
+        
+        In this state, a vertex has been clicked, and the application must
+        determine if the user intends to move the vertex or to create a 
+        new edge from that vertex.
+        """
         self._selected = self._graph.get_selected(mouse_pos)
         self._from_vertex = None
         for event in pg.event.get():
@@ -81,13 +86,24 @@ class Engine:
                     self._state = "editor.dragging"
 
                 case pg.MOUSEBUTTONUP:
+                    # releasing left click without moving the mouse will
+                    # create a new edge from the selected vertex
                     if event.button == 1:
                         if isinstance(self._selected, Vertex):
                             self._from_vertex = self._selected
                             self._state = "editor.holding_edge"
     
     def state_editor_dragging(self, mouse_pos: tuple[int, int]) -> None:
+        """
+        editor.dragging state input handler
+        
+        In this state, the selected vertex follows the mouse position 
+        until left click is released.
+        """
         self._from_vertex = None
+        # check if we missed a mouse release
+        if not pg.mouse.get_pressed()[0]:
+            self._state = "editor.free"
         for event in pg.event.get():
             match event.type:
                 case pg.QUIT:
@@ -101,6 +117,14 @@ class Engine:
             self._graph.move_vertex(self._selected, mouse_pos)
 
     def state_editor_holding_edge(self, mouse_pos: tuple[int, int]) -> None:
+        """
+        editor.holding_edge state input handler
+        
+        In this state, the user has clicked a vertex and there is a 
+        temporary edge drawn between the clicked vertex and the mouse.
+        If another vertex is clicked, a real edge is created between
+        the two.
+        """
         self._selected = self._graph.get_selected(mouse_pos)
         # can only select vertices while placing an edge
         if not isinstance(self._selected, Vertex):
