@@ -1,20 +1,19 @@
 # application engine
 from typing import Optional
 import pygame as pg
-from pygame.constants import MOUSEWHEEL
 
-from classes import Graph, Edge, Vertex, V
+from classes import Graph, Edge, Vertex, Kruskal, V
 from constants import *
 
 
 class Editor:
-    def __init__(self, screen: pg.Surface, font: pg.font.Font, graph=Graph(set(), set())) -> None:
+    def __init__(self, screen: pg.Surface, font: pg.font.Font, graph: Graph=Graph(set(), set())) -> None:
         self.screen = screen
         self.font = font
+        self.graph = graph
 
         self._clock = pg.time.Clock()
         self._done = False
-        self.graph = graph
         self._selected: Optional[Vertex | Edge] = None
         self._state = "editor.free"
 
@@ -40,6 +39,7 @@ class Editor:
             match event.type:
                 case pg.QUIT:
                     self._done = True
+                    quit()
                 
                 case pg.MOUSEBUTTONDOWN:
                     if event.button == 1:
@@ -63,6 +63,10 @@ class Editor:
                     # scrolling modifies edge weight
                     if isinstance(self._selected, Edge):
                         self.graph.modify_edge_weight(self._selected, max(0, self._selected.weight + event.y))
+                
+                case pg.KEYDOWN:
+                    if self.graph.usable[0] and event.key == pg.K_RETURN:
+                        self._done = True
     
     def state_editor_clicking(self, mouse_pos: tuple[int, int]) -> None:
         """
@@ -98,7 +102,7 @@ class Editor:
         until left click is released.
         """
         self._from_vertex = None
-        # check if we missed a mouse release
+        # check if a mouse release was missed
         if not pg.mouse.get_pressed()[0]:
             self._state = "editor.free"
         for event in pg.event.get():
@@ -192,7 +196,7 @@ class Editor:
 
     def run(self) -> Graph:
         """Start and run the editor. Returns the created graph."""
-        pg.display.set_caption(f"Kruskal's Algorithm - Create a Connected Graph")
+        pg.display.set_caption("Kruskal's Algorithm - Create a Connected Graph")
 
         while not self._done:
             mouse_pos = pg.mouse.get_pos()
@@ -221,3 +225,90 @@ class Editor:
             self._clock.tick(FPS)
         
         return self.graph
+
+
+class AlgorithmRunner:
+    def __init__(self, screen: pg.Surface, font: pg.font.Font, graph: Graph) -> None:
+        self.screen = screen
+        self.font = font
+        self.graph = graph
+
+        self._kruskal = Kruskal(self.graph)
+        self._edge_list = self.graph.get_sorted_edges()
+        self._edge_index = 0
+        self._checking = False
+
+        self._clock = pg.time.Clock()
+        self._frame_counter = 0
+        self._done = False
+        self._state = "runner.stepping"
+
+    def next_step(self) -> None:
+        """Run the next algorithm step."""
+        if self._checking:
+            # check the edge
+            self._kruskal.check_edge(self._edge_list[self._edge_index])
+            self._edge_index += 1
+            self._checking = False
+        else:
+            # tell the next edge that it is being checked
+            self._edge_list[self._edge_index].kruskal_status = 2
+            self._checking = True
+        
+        if self._edge_index == len(self.graph.edges):
+            self._state = "runner.done"
+            pg.display.set_caption("Kruskal's Algorithm - Done")
+
+    def run(self) -> None:
+        """Start and run the algorithm runner."""
+        pg.display.set_caption("Kruskal's Algorithm - Running")
+
+        while not self._done:
+            for event in pg.event.get():
+                match event.type:
+                    case pg.QUIT:
+                        self._done = True
+                        quit()
+                    
+                    case pg.MOUSEBUTTONDOWN:
+                        # clicking steps to the next algorithm step
+                        if self._state == "runner.stepping" and event.button == 1:
+                            self.next_step()
+                    
+                    case pg.KEYDOWN:
+                        # pressing the spacebar runs the rest of the algorithm
+                        if self._state == "runner.stepping" and event.key == pg.K_SPACE:
+                            self._state = "runner.playing"
+            
+            self.screen.fill(BG_COLOR)
+            self.graph.draw(self.screen, None, self.font)
+
+            if self._state == "runner.stepping":
+                m_text = self.font.render(
+                    "Click anywhere to step through the algorithm, or press [SPACE] to play it.", 
+                    True,
+                    SUCCESS_COLOR,
+                )
+                self.screen.blit(m_text, (10, SCREEN_DIM[1] - m_text.get_height() - 10))
+            
+            elif self._state == "runner.playing":
+                if self._frame_counter == 0:
+                    self.next_step()
+                self._frame_counter = (self._frame_counter + 1) % ALGO_PLAY_FRAMES
+                m_text = self.font.render(
+                    "Playing...", 
+                    True,
+                    SUCCESS_COLOR,
+                )
+                self.screen.blit(m_text, (10, SCREEN_DIM[1] - m_text.get_height() - 10))
+
+            elif self._state == "runner.done":
+                m_text = self.font.render(
+                    f"Finished! Total weight is {self.graph.kruskal_weight}.", 
+                    True,
+                    SUCCESS_COLOR,
+                )
+                self.screen.blit(m_text, (10, SCREEN_DIM[1] - m_text.get_height() - 10))
+
+            pg.display.update()
+            self._clock.tick(FPS)

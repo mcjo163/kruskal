@@ -1,7 +1,7 @@
 # main script
 from constants import *
 import pygame as pg
-from engine import Editor
+from engine import Editor, AlgorithmRunner
 
 
 if __name__ == "__main__":
@@ -15,3 +15,4 @@ if __name__ == "__main__":
 
     # use the editor to create a connected graph
     graph = Editor(screen, font).run()
+    AlgorithmRunner(screen, font, graph).run()

@@ -47,6 +47,10 @@ class Vertex:
         pg.draw.circle(surf, color, self.pos, radius)
 
 
+# shorthand for vertex creation
+V = lambda x, y: Vertex((x, y))
+
+
 class Edge:
     """Represents a weighted edge."""
 
@@ -54,10 +58,13 @@ class Edge:
         self.vertices = (a, b)
         self.weight = weight
 
+        # -1: excluded, 0: unchecked, 1: included, 2: being checked
+        self.kruskal_status = 0
+
         # add self to vertices' edge sets
         self.vertices[0]._edges.add(self)
         self.vertices[1]._edges.add(self)
-    
+
     def __str__(self) -> str:
         return f"E({str(self.vertices[0])}->{str(self.vertices[1])})"
 
@@ -91,6 +98,17 @@ class Edge:
     ) -> None:
         """Draws the edge to the given `Surface`."""
         a, b = self.vertices
+
+        # override draw color if edge has been checked
+        match self.kruskal_status:
+            case -1:
+                color = EXCLUDED_EDGE_COLOR
+            case 1:
+                color = INCLUDED_EDGE_COLOR
+                width = EDGE_HOVER_WIDTH
+            case 2:
+                color = CHECKING_EDGE_COLOR
+                width = EDGE_HOVER_WIDTH
 
         w_text = font.render(str(self.weight), True, color, BG_COLOR)
         w_text_border_size = max(w_text.get_width(), w_text.get_height())
@@ -234,11 +252,11 @@ class Graph:
             # run DFS from each untraversed neighbor
             if (neighbor := e.walk(v)) not in seen:
                 self._dfs(neighbor, seen)
-    
+
     @property
     def connected(self) -> bool:
         """A graph is connected if there is a path between any two of its vertices."""
-        
+
         if len(self.vertices) <= 1:
             return True
 
@@ -247,9 +265,9 @@ class Graph:
         # start with arbitrary vertex
         start = next(iter(self.vertices))
         self._dfs(start, seen)
-        
+
         return len(seen) == len(self.vertices)
-    
+
     @property
     def usable(self) -> tuple[bool, str]:
         """
@@ -258,11 +276,19 @@ class Graph:
         """
         if len(self.edges) == 0:
             return False, "Your graph needs at least one edge!"
-        
+
         if not self.connected:
             return False, "Your graph must be connected!"
-        
+
         return True, "Looks good! Press [ENTER] to run Kruskal's Algorithm!"
+    
+    @property
+    def kruskal_weight(self) -> int:
+        """
+        Sums up the weights of the included edges. Only makes sense if all edges have
+        been checked by Kruskal's Algorithm.
+        """
+        return sum([e.weight for e in filter(lambda edge: edge.kruskal_status == 1, self.edges)])
 
     def draw(
         self,
@@ -283,5 +309,46 @@ class Graph:
                 v.draw(surf, VERTEX_DEFAULT_COLOR, VERTEX_DEFAULT_RADIUS)
 
 
-# shorthand for vertex creation
-V = lambda x, y: Vertex((x, y))
+class Kruskal:
+    """Represents a state mid-Kruskal's Algorithm."""
+
+    def __init__(self, graph: Graph) -> None:
+        # start with each vertex in its own set
+        self.components = set([frozenset([v]) for v in graph.vertices])
+    
+    def check_edge(self, edge: Edge) -> None:
+        """
+        The main part of Kruskal's Algorithm.
+
+        If the vertices of the given `edge` are in the same connected 
+        component, including it would create a cycle, so it is excluded.
+
+        If the vertices of the given `edge` are in different connected 
+        components, then we can use it, so it is included, and the 
+        components are merged.
+        """
+        a, b = edge.vertices
+        _a_component: Optional[frozenset[Vertex]] = None
+        _b_component: Optional[frozenset[Vertex]] = None
+
+        # determine which components the vertices belong to
+        for c in self.components:
+            if a in c:
+                _a_component = c
+            if b in c:
+                _b_component = c
+        
+        if not (_a_component and _b_component):
+            raise ValueError("Edge contains invalid vertex.")
+
+        # if they are in the same connected component, exclude the edge
+        if _a_component == _b_component:
+            edge.kruskal_status = -1
+        
+        # if they are in different components, include the edge and merge
+        # the components
+        else:
+            edge.kruskal_status = 1
+            self.components.remove(_a_component)
+            self.components.remove(_b_component)
+            self.components.add(_a_component.union(_b_component))

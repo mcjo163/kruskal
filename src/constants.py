@@ -3,6 +3,7 @@
 # screen constants
 SCREEN_DIM = (800, 600)  # screen dimensions
 FPS = 60  # framerate for the application
+ALGO_PLAY_FRAMES = 20  # number of frames for each algorithm step
 
 # font
 FONT_SIZE = 16  # font size for all text
@@ -35,3 +36,4 @@ ERROR_COLOR = DARK_RED  # color of error/failure messages
 
 INCLUDED_EDGE_COLOR = MED_GREEN  # color of edge included in spanning tree
 EXCLUDED_EDGE_COLOR = GREY  # color of edge excluded from spanning tree
+CHECKING_EDGE_COLOR = LIGHT_BLUE  # color of edge being checked
