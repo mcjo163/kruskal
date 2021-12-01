@@ -8,13 +8,13 @@ from constants import *
 
 
 class Editor:
-    def __init__(self, screen: pg.Surface, font: pg.font.Font) -> None:
+    def __init__(self, screen: pg.Surface, font: pg.font.Font, graph=Graph(set(), set())) -> None:
         self.screen = screen
         self.font = font
 
         self._clock = pg.time.Clock()
         self._done = False
-        self._graph = Graph(set(), set())
+        self.graph = graph
         self._selected: Optional[Vertex | Edge] = None
         self._state = "editor.free"
 
@@ -34,7 +34,7 @@ class Editor:
         
         This is the default, resting state of the editor.
         """
-        self._selected = self._graph.get_selected(mouse_pos)
+        self._selected = self.graph.get_selected(mouse_pos)
         self._from_vertex = None
         for event in pg.event.get():
             match event.type:
@@ -45,7 +45,7 @@ class Editor:
                     if event.button == 1:
                         # left click on empty space creates a vertex
                         if not self._selected:
-                            self._graph.add_vertex(V(*mouse_pos))
+                            self.graph.add_vertex(V(*mouse_pos))
                         # left click on vertex will either move (drag) 
                         # or create an edge (release w/o moving)
                         elif isinstance(self._selected, Vertex):
@@ -55,14 +55,14 @@ class Editor:
                         # right clicking on a vertex or edge removes it
                         match self._selected:
                             case Vertex():
-                                self._graph.remove_vertex(self._selected)
+                                self.graph.remove_vertex(self._selected)
                             case Edge():
-                                self._graph.remove_edge(self._selected)
+                                self.graph.remove_edge(self._selected)
                 
                 case pg.MOUSEWHEEL:
                     # scrolling modifies edge weight
                     if isinstance(self._selected, Edge):
-                        self._graph.modify_edge_weight(self._selected, max(0, self._selected.weight + event.y))
+                        self.graph.modify_edge_weight(self._selected, max(0, self._selected.weight + event.y))
     
     def state_editor_clicking(self, mouse_pos: tuple[int, int]) -> None:
         """
@@ -72,7 +72,7 @@ class Editor:
         determine if the user intends to move the vertex or to create a 
         new edge from that vertex.
         """
-        self._selected = self._graph.get_selected(mouse_pos)
+        self._selected = self.graph.get_selected(mouse_pos)
         self._from_vertex = None
         for event in pg.event.get():
             match event.type:
@@ -111,7 +111,7 @@ class Editor:
                         self._state = "editor.free"
         
         if isinstance(self._selected, Vertex):
-            self._graph.move_vertex(self._selected, mouse_pos)
+            self.graph.move_vertex(self._selected, mouse_pos)
 
     def state_editor_holding_edge(self, mouse_pos: tuple[int, int]) -> None:
         """
@@ -122,7 +122,7 @@ class Editor:
         If another vertex is clicked, a real edge is created between
         the two.
         """
-        self._selected = self._graph.get_selected(mouse_pos)
+        self._selected = self.graph.get_selected(mouse_pos)
         # can only select vertices while placing an edge
         if not isinstance(self._selected, Vertex):
             self._selected = None
@@ -135,7 +135,7 @@ class Editor:
                     if event.button == 1:
                         # if clicking on another vertex, create new edge
                         if self._selected and self._selected != self._from_vertex:
-                            self._graph.add_edge(self._from_vertex, self._selected, self._new_weight)
+                            self.graph.add_edge(self._from_vertex, self._selected, self._new_weight)
                             self._from_vertex = None
                             self._new_weight = 0
                             self._state = "editor.free"
@@ -149,30 +149,6 @@ class Editor:
                 case pg.MOUSEWHEEL:
                     # scrolling changes weight of new edge
                     self._new_weight = max(0, self._new_weight + event.y)
-    
-    def run(self) -> Graph:
-        """Start and run the editor. Returns the created graph."""
-        pg.display.set_caption(f"Kruskal's Algorithm - Create a Connected Graph")
-
-        while not self._done:
-            mouse_pos = pg.mouse.get_pos()
-            
-            self._state_map[self._state](mouse_pos)
-
-            self.screen.fill(BG_COLOR)
-
-            self._graph.draw(self.screen, self._selected, self.font)
-
-            # draw edge-in-progress
-            if self._from_vertex:
-                self.draw_temp_edge(mouse_pos)
-                self._from_vertex.draw(self.screen, VERTEX_HOVER_COLOR, VERTEX_HOVER_RADIUS)
-
-
-            pg.display.update()
-            self._clock.tick(FPS)
-        
-        return self._graph
         
     def draw_temp_edge(self, mouse_pos: tuple[int, int]) -> None:
         """Draws the temporary edge from selected vertex to mouse position."""
@@ -213,3 +189,35 @@ class Editor:
                 midpoint[1] - w_text.get_height() // 2,
             ),
         )
+
+    def run(self) -> Graph:
+        """Start and run the editor. Returns the created graph."""
+        pg.display.set_caption(f"Kruskal's Algorithm - Create a Connected Graph")
+
+        while not self._done:
+            mouse_pos = pg.mouse.get_pos()
+            
+            # process input based on current state
+            self._state_map[self._state](mouse_pos)
+
+            self.screen.fill(BG_COLOR)
+            self.graph.draw(self.screen, self._selected, self.font)
+
+            # draw edge-in-progress if needed
+            if self._from_vertex:
+                self.draw_temp_edge(mouse_pos)
+                self._from_vertex.draw(self.screen, VERTEX_HOVER_COLOR, VERTEX_HOVER_RADIUS)
+            
+            match self.graph.usable:
+                case (False, msg):
+                    m_color = ERROR_COLOR
+                case (True, msg):
+                    m_color = SUCCESS_COLOR
+            
+            m_text = self.font.render(msg, True, m_color)
+            self.screen.blit(m_text, (10, SCREEN_DIM[1] - m_text.get_height() - 10))
+
+            pg.display.update()
+            self._clock.tick(FPS)
+        
+        return self.graph

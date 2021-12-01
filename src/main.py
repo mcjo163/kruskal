@@ -11,7 +11,7 @@ if __name__ == "__main__":
 
     # set up screen and font
     screen = pg.display.set_mode(SCREEN_DIM)
-    font = pg.font.SysFont('verdana', FONT_SIZE, False)
+    font = pg.font.SysFont('Consolas', FONT_SIZE, False)
 
     # use the editor to create a connected graph
     graph = Editor(screen, font).run()

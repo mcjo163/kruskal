@@ -28,10 +28,19 @@ class Vertex:
 
     def __init__(self, pos: tuple[int, int]) -> None:
         self.pos = pos
+        self._edges: set[Edge] = set()
+
+    def __str__(self) -> str:
+        return f"V{self.pos}"
 
     def distance_to(self, point: tuple[int, int]) -> float:
         """Returns the distance from this vertex to a given point."""
         return pt_distance(self.pos, point)
+
+    @property
+    def deg(self) -> int:
+        """The number of edges connected to this vertex."""
+        return len(self._edges)
 
     def draw(self, surf: pg.Surface, color: tuple[int, int, int], radius: int) -> None:
         """Draws the vertex to the given `Surface`."""
@@ -44,6 +53,13 @@ class Edge:
     def __init__(self, a: Vertex, b: Vertex, weight: int) -> None:
         self.vertices = (a, b)
         self.weight = weight
+
+        # add self to vertices' edge sets
+        self.vertices[0]._edges.add(self)
+        self.vertices[1]._edges.add(self)
+    
+    def __str__(self) -> str:
+        return f"E({str(self.vertices[0])}->{str(self.vertices[1])})"
 
     def distance_to(self, point: tuple[int, int]) -> float:
         """Returns the perpendicular distance from this vertex to a given point."""
@@ -59,6 +75,12 @@ class Edge:
 
         # otherwise return distance to closest endpoint
         return min(pt_distance(point, (x1, y1)), pt_distance(point, (x2, y2)))
+
+    def walk(self, start: Vertex) -> Vertex:
+        """Walks this edge starting from `start`."""
+        if start not in self.vertices:
+            raise ValueError("Cannot walk from non-connected vertex.")
+        return self.vertices[0 if start == self.vertices[1] else 1]
 
     def draw(
         self,
@@ -167,6 +189,9 @@ class Graph:
         """Removes an edge between two vertices in the graph."""
         if e not in self.edges:
             raise ValueError("Cannot remove nonexistent edge.")
+        # remove edge from vertices' edge sets
+        e.vertices[0]._edges.remove(e)
+        e.vertices[1]._edges.remove(e)
         self.edges.remove(e)
 
     def get_selected(self, mouse_pos: tuple[int, int]) -> Optional[Vertex | Edge]:
@@ -193,6 +218,51 @@ class Graph:
             return in_click_distance[0]
 
         return None
+
+    def _dfs(self, v: Vertex, seen: set[Vertex]) -> None:
+        """
+        Perform a depth-first search starting from `v`.
+
+        Used to determine connectedness.
+        """
+        if v not in self.vertices:
+            raise ValueError("Cannot perform DFS from invalid vertex.")
+
+        # add current vertex to the set of previously-traversed vertices
+        seen.add(v)
+        for e in v._edges:
+            # run DFS from each untraversed neighbor
+            if (neighbor := e.walk(v)) not in seen:
+                self._dfs(neighbor, seen)
+    
+    @property
+    def connected(self) -> bool:
+        """A graph is connected if there is a path between any two of its vertices."""
+        
+        if len(self.vertices) <= 1:
+            return True
+
+        seen: set[Vertex] = set()
+
+        # start with arbitrary vertex
+        start = next(iter(self.vertices))
+        self._dfs(start, seen)
+        
+        return len(seen) == len(self.vertices)
+    
+    @property
+    def usable(self) -> tuple[bool, str]:
+        """
+        A graph is usable for Kruskal's algorithm (in this use case) if it is connected
+        and has at least one edge.
+        """
+        if len(self.edges) == 0:
+            return False, "Your graph needs at least one edge!"
+        
+        if not self.connected:
+            return False, "Your graph must be connected!"
+        
+        return True, "Looks good! Press [ENTER] to run Kruskal's Algorithm!"
 
     def draw(
         self,
