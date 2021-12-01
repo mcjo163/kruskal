@@ -65,7 +65,7 @@ class Editor:
                         self.graph.modify_edge_weight(self._selected, max(0, self._selected.weight + event.y))
                 
                 case pg.KEYDOWN:
-                    if self.graph.usable[0] and event.key == pg.K_RETURN:
+                    if self.graph.usable[0] and event.key == pg.K_SPACE:
                         self._done = True
     
     def state_editor_clicking(self, mouse_pos: tuple[int, int]) -> None:
@@ -271,9 +271,16 @@ class AlgorithmRunner:
                         quit()
                     
                     case pg.MOUSEBUTTONDOWN:
-                        # clicking steps to the next algorithm step
-                        if self._state == "runner.stepping" and event.button == 1:
-                            self.next_step()
+                        if event.button == 1:
+                            # if stepping, clicking steps to the next algorithm step
+                            if self._state == "runner.stepping":
+                                self.next_step()
+                            # if done, clicking returns to the editor
+                            elif self._state == "runner.done":
+                                # clear algorithm information from graph
+                                for e in self.graph.edges:
+                                    e.kruskal_status = 0
+                                self._done = True
                     
                     case pg.KEYDOWN:
                         # pressing the spacebar runs the rest of the algorithm
@@ -304,7 +311,7 @@ class AlgorithmRunner:
 
             elif self._state == "runner.done":
                 m_text = self.font.render(
-                    f"Finished! Total weight is {self.graph.kruskal_weight}.", 
+                    f"Finished! Total weight is {self.graph.kruskal_weight}. Click anywhere to return to the editor.", 
                     True,
                     SUCCESS_COLOR,
                 )

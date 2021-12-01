@@ -15,4 +15,6 @@ if __name__ == "__main__":
 
     # use the editor to create a connected graph
     graph = Editor(screen, font).run()
-    AlgorithmRunner(screen, font, graph).run()
+    while True:
+        AlgorithmRunner(screen, font, graph).run()
+        graph = Editor(screen, font, graph).run()

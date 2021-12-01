@@ -1,6 +1,6 @@
 # classes for graph modeling
-import pygame as pg
 from typing import Optional
+import pygame as pg
 from math import sqrt
 
 from constants import *
@@ -58,6 +58,8 @@ class Edge:
         self.vertices = (a, b)
         self.weight = weight
 
+        self._label_rect: Optional[pg.Rect] = None
+
         # -1: excluded, 0: unchecked, 1: included, 2: being checked
         self.kruskal_status = 0
 
@@ -73,6 +75,10 @@ class Edge:
         x0, y0 = point
         x1, y1 = self.vertices[0].pos
         x2, y2 = self.vertices[1].pos
+
+        # if point is in the label rect, return distance to its center
+        if self._label_rect and self._label_rect.collidepoint(*point):
+            return pt_distance(point, self._label_rect.center) / EDGE_HOVER_WIDTH
 
         # use formula if perpendicular distance makes sense
         if lies_between(point, (x1, y1), (x2, y2)):
@@ -121,16 +127,15 @@ class Edge:
         # draw edge line
         pg.draw.line(surf, color, a.pos, b.pos, width=width + t)
 
-        # draw edge weight at center point
-        surf.fill(
-            color,
-            (
-                midpoint[0] - (w_text_border_size + 2 * width) // 2,
-                midpoint[1] - (w_text_border_size + 2 * width) // 2,
-                w_text_border_size + 2 * width,
-                w_text_border_size + 2 * width,
-            ),
+        self._label_rect = pg.Rect(
+            midpoint[0] - (w_text_border_size + 2 * width) // 2,
+            midpoint[1] - (w_text_border_size + 2 * width) // 2,
+            w_text_border_size + 2 * width,
+            w_text_border_size + 2 * width,
         )
+
+        # draw edge weight at center point
+        surf.fill(color, self._label_rect)
         surf.fill(
             BG_COLOR,
             (
@@ -280,7 +285,7 @@ class Graph:
         if not self.connected:
             return False, "Your graph must be connected!"
 
-        return True, "Looks good! Press [ENTER] to run Kruskal's Algorithm!"
+        return True, "Looks good! Press [SPACE] to run Kruskal's Algorithm!"
     
     @property
     def kruskal_weight(self) -> int:
