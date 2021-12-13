@@ -2,6 +2,7 @@
 from constants import *
 import pygame as pg
 from engine import Editor, AlgorithmRunner
+from classes import random_graph
 
 
 if __name__ == "__main__":
@@ -12,6 +13,8 @@ if __name__ == "__main__":
     # set up screen and font
     screen = pg.display.set_mode(SCREEN_DIM)
     font = pg.font.SysFont('Consolas', FONT_SIZE, False)
+
+    # starting_graph = random_graph(8, 20)
 
     # use the editor to create a connected graph
     graph = Editor(screen, font).run()

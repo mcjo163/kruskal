@@ -2,6 +2,7 @@
 from typing import Optional
 import pygame as pg
 from math import sqrt
+from random import randint, sample
 
 from constants import *
 
@@ -357,3 +358,30 @@ class Kruskal:
             self.components.remove(_a_component)
             self.components.remove(_b_component)
             self.components.add(_a_component.union(_b_component))
+
+
+def random_graph(v: int, e: int) -> Graph:
+    """
+    Returns a random connected graph with `v` vertices and at least `e`
+    edges. Weights are randomly assigned between 1 and `e`.
+    """
+    # create empty graph
+    g = Graph(set(), set())
+
+    # create v randomly-placed vertices
+    for _ in range(v):
+        _x = randint(SCREEN_DIM[0] // 10, SCREEN_DIM[0] - SCREEN_DIM[0] // 10)
+        _y = randint(SCREEN_DIM[1] // 10, SCREEN_DIM[1] - SCREEN_DIM[1] // 10)
+        g.add_vertex(V(_x, _y))
+    
+    # add e randomly-selected edges
+    for _ in range(e):
+        a, b = sample(g.vertices, k=2)
+        g.add_edge(a, b, randint(1, v))
+    
+    # continue adding random edges until connected
+    while not g.connected:
+        a, b = sample(g.vertices, k=2)
+        g.add_edge(a, b, randint(1, v))
+    
+    return g
